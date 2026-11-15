@@ -104,18 +104,27 @@ All three containers operate on identical `Product` structs (`id`, `name`, `cate
 
 ---
 
-## Part E – Final Recommendation
+## Part E – Final Verdict
 
-**Selected Winner for Product ID Search: Hash Table (Linear Probing)**
+### 1. Which data structure is the winner for your selected application?
+**Hashing (with Linear Probing)** is the overall winner for **Product ID Search** when the primary operation is high-speed, exact-match barcode or SKU lookup. 
 
-For a barcode-driven Product ID lookup service where almost all queries check existing SKUs by exact ID, **Hashing delivers the best real-world throughput**:
-- It achieved the lowest mean comparison count on successful lookups (**`3.20`** vs. **`4.40`** for AVL and **`15.80`** for BST), resolving **80% of valid test queries (`1001`, `1010`, `1020`, `6391`) in a single probe**.
-- Reducing table occupancy below `0.55` (for instance, sizing the array to `79` or `83` slots for 40 products) or switching to double hashing would eliminate the primary clustering seen on `1021` and `1500`.
+However, if the inventory system also requires **sorted catalog exports** (via in-order traversal) or **ID range queries**, the **AVL Tree** is the strongest secondary choice because it guarantees logarithmic lookup bounds regardless of input order.
 
-**When AVL Tree Should Be Chosen Instead:**  
-If the inventory module also needs **sorted catalog exports** (such as printing items in ascending SKU order) or **range queries** (for example, listing all products priced or numbered between `1001` and `1010`), a Hash Table cannot answer without scanning and sorting the entire array. In those reporting workloads, the **AVL Tree** is the stronger engineering choice due to its guaranteed `<= 6` comparison ceiling and native in-order traversal.
+### 2. Support your answer using your own experimental observations.
+Our 40-record warehouse product benchmark demonstrated three clear experimental findings that justify choosing Hashing over BST and AVL:
 
----
+1. **Lowest Successful Search Cost (`3.20` vs. `4.40` and `15.80`):**
+   - Across five valid Product ID queries (`1001`, `1010`, `1020`, `6391`, `9921`), Hashing averaged **3.20 comparisons**, outperforming the AVL Tree (**4.40**) by **27%** and beating the unbalanced BST (**15.80**) by nearly **5×**.
+   - Four out of five existing products resolved on the **very first probe (1 comparison)**, directly matching real-world retail and warehouse barcode scanning where almost all queries target registered SKUs.
+
+2. **Why Unbalanced BST Failed Under Real Batch Arrivals (`Height 26` vs. `6`):**
+   - Inserting the consecutive supplier batch (`1001`–`1020`) caused the BST to skew heavily along its right branch, reaching a height of **26 nodes** and requiring **647 total insertion comparisons**.
+   - By contrast, the AVL Tree performed **23 rotations** during insertion, holding its height at **6 nodes** (the theoretical minimum for 40 records) and cutting insertion comparisons by **74%** (`165` vs. `647`).
+
+3. **Observed Hashing Trade-Off and How to Mitigate It (`172` Collisions):**
+   - At a `0.75` load factor (`40` records in a `53`-slot table), sequential keys (`1001`–`1020`) mapped into adjacent slots (`47–52` wrapping into `0–13`), generating **172 cumulative collisions**.
+   - Because of this contiguous slot clustering, unsuccessful searches like `1021` (`13` probes) and `1500` (`11` probes) pushed Hashing's unsuccessful search average (**6.00**) slightly higher than AVL's (**5.40**). Keeping the load factor below `0.55` (for example, sizing the array to `79` or `83` slots for 40 products) or switching to Double Hashing eliminates this clustering penalty while preserving $O(1)$ lookup speed.
 
 ## Repository Contents
 
