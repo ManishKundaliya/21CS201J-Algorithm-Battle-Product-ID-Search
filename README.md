@@ -1,126 +1,126 @@
-# Algorithm Battle – Which Data Structure Wins? (Product ID Search)
+# Experimental Comparison of BST, AVL Tree, and Linear-Probing Hashing for Warehouse Product ID Lookup
 
-**Course:** Data Structures and Algorithms (21CS201J) – Assessment Task 3
-**Language:** C++17 | **SDG:** 9 – Industry, Innovation and Infrastructure
+- **Course:** 21CS201J – Data Structures and Algorithms (Term Work – Assessment Task 3)
+- **Author:** Manish Jain (B.Tech CSE-AIML, Semester III, 2026–2027)
+- **Institution:** SRM Institute of Science and Technology
+- **Language:** C++17 (`g++ -std=c++17 -Wall`)
+- **SDG Alignment:** SDG 9 – Industry, Innovation and Infrastructure (Design Alignment)
 
-## Build & Run
+---
+
+## Compilation and Execution
 
 ```bash
 g++ -std=c++17 -Wall -o product_search main.cpp
+./product_search.exe        # Windows (MINGW64 / Git Bash / PowerShell)
 ./product_search            # Linux / macOS
-product_search.exe          # Windows (cmd / PowerShell: .\product_search.exe)
 ```
 
-The program (1) inserts 40 products into a BST, an AVL tree and a hash table, (2) runs 5 successful + 5 unsuccessful searches on all three, and (3) opens a live menu for inserting/searching new IDs during the viva.
-
-**Counting rule:** BST/AVL = 1 comparison per node visited; Hash = 1 probe per slot examined.
-
----
-
-## Part A – Problem Selection
-
-**Problem:** Product ID Search in an e-commerce warehouse. Each record stores `productID`, `productName`, `category`, `price`.
-
-**Why it matters (SDG 9):** Modern supply chains depend on digital inventory infrastructure. Every barcode scan, order pick and stock check is a lookup by Product ID. Slow lookups create latency at scale, wasting compute and worker time. Choosing the right data structure is a low-cost way to build more efficient, resilient logistics infrastructure.
-
-**Why these three structures:**
-- **BST** – simple ordered structure, but performance depends on insertion order.
-- **AVL Tree** – a BST that stays balanced, guaranteeing logarithmic height.
-- **Hash Table** – trades ordering for near-constant-time exact lookup.
-
-**Dataset (40 records):** IDs `1001–1020` were added as a sequential bulk batch (worst case for a plain BST), followed by 20 scattered IDs (`1337 … 9921`).
+Executing the binary runs three stages sequentially:
+1. Populates a **Binary Search Tree (BST)**, an **AVL Tree**, and an **Open-Addressed Hash Table** with the same 40-item retail inventory catalog while logging insertion metrics.
+2. Executes **5 successful** and **5 unsuccessful** lookup queries across all three structures, counting every node comparison (trees) or slot probe (hash table).
+3. Opens an interactive terminal menu for inserting new SKUs, rejecting duplicate IDs, and inspecting live lookup counts during evaluation.
 
 ---
 
-## Part B – Implementation Overview
+## Part A – Application Context and Architecture Rationale
 
-| Structure | How it works | Search | Insert | Space |
-|---|---|---|---|---|
-| **BST** | Left < node < right. Insert/search walk from the root, comparing at each node. No balancing. | Avg O(log n), **worst O(n)** | Avg O(log n), **worst O(n)** | O(n) |
-| **AVL Tree** | BST + balance factor (`height(left) − height(right)`) at every node. If it leaves {−1, 0, +1}, rotations (LL, RR, LR, RL) restore balance. | **O(log n)** always | **O(log n)** (≤ 2 rotations per insert) | O(n) |
-| **Hash Table (Linear Probing)** | `index = id % 53`. If occupied, try `index+1, +2, …` (wrapping). Search stops at the key or an empty slot. | Avg O(1), worst O(n) | Avg O(1), worst O(n) | O(m) table size (m = 53) |
+### 1. Operational Scenario
+In an automated fulfillment center or retail checkout counter, barcode scanners read a numeric `productID` and query the backend catalog to fetch its `productName`, `category`, and `price`. Because incoming supplier shipments frequently arrive with consecutive SKU numbers (`1001` through `1020`) alongside irregular category codes (`1337` up to `9921`), the underlying storage structure must handle mixed arrival patterns without slowing down point-of-sale queries.
 
-Rotation summary: **LL → right rotate**, **RR → left rotate**, **LR → left rotate child, then right rotate**, **RL → right rotate child, then left rotate**.
+### 2. Relevance to SDG 9
+Digital supply-chain systems form a core layer of modern industrial infrastructure (SDG 9). High-latency inventory lookups bottleneck warehouse picking and checkout throughput while forcing servers to burn extra CPU cycles per transaction. Evaluating algorithmic trade-offs at the data-structure level ensures responsive, resource-efficient inventory software without requiring heavier hardware.
 
----
-
-## Part C & D – Experimental Results (40 records, deterministic)
-
-### Search comparisons
-
-| Test | Product ID | BST | AVL | Hash (probes) |
-|---|---|---|---|---|
-| Successful | 1001 | 1 | 5 | 1 |
-| Successful | 1010 | 10 | 4 | 1 |
-| Successful | 1020 | 20 | 4 | 1 |
-| Successful | 6391 | 24 | 4 | 1 |
-| Successful | 9921 | 24 | 5 | 12 |
-| **Successful average** | | **15.80** | **4.40** | **3.20** |
-| Unsuccessful | 1021 | 24 | 6 | 13 |
-| Unsuccessful | 1500 | 24 | 6 | 11 |
-| Unsuccessful | 3000 | 24 | 5 | 1 |
-| Unsuccessful | 9999 | 24 | 5 | 1 |
-| Unsuccessful | 500 | 1 | 5 | 4 |
-| **Unsuccessful average** | | **19.40** | **5.40** | **6.00** |
-
-### Summary
-
-| Metric | BST | AVL Tree | Hash Table |
-|---|---|---|---|
-| Avg comparisons – successful | 15.80 | 4.40 | **3.20** |
-| Avg comparisons – unsuccessful | 19.40 | 5.40 | 6.00 |
-| Total insertion comparisons (40 inserts) | 647 (≈16.2/insert) | 165 (≈4.1/insert) | – |
-| Tree height (nodes) | **26** | **6** | – |
-| Rotations performed | – | 23 | – |
-| Collisions during insertion | – | – | 172 (load factor 0.75, size 53) |
-| Sorted output (in-order) | Yes | Yes | No |
-
-### Overall observation
-- **BST degenerated** into an almost linear chain (height 26 for 40 nodes) because IDs 1001–1020 arrived in ascending order. The theoretical minimum height for 40 nodes is 6.
-- **AVL kept height at 6** using 23 rotations, which reduced successful search cost by about 3.6× and unsuccessful search cost by about 3.6× compared with the BST.
-- **Hash was fastest for most successful lookups** (1 probe for 4 of 5 tests). However, the sequential batch (slots 47–52 and 0–13) created a long contiguous cluster, and scattered IDs that hashed into it needed many probes (e.g., 9921 took 12). This is **primary clustering**, and it also made some unsuccessful searches (1021, 1500) expensive.
-- Hash has no ordering, so range queries are not supported.
+### 3. Why These Three Structures Were Tested Together
+- **Unbalanced BST:** Maintains sorted key order with minimal implementation overhead, making it a useful baseline for observing how consecutive supplier batches distort tree depth.
+- **AVL Tree:** Enforces a strict balance condition (`|leftHeight - rightHeight| <= 1`) through local rotations, preserving logarithmic traversal regardless of input ordering.
+- **Hash Table (Linear Probing):** Maps each `productID` directly to an array bucket via modulo arithmetic, sacrificing sorted traversal in exchange for near-constant-time exact matching.
 
 ---
 
-## Part E – Final Verdict
+## Part B – Implementation Design (`main.cpp`)
 
-**Winner for pure Product ID lookup: Hash Table.** On exact-ID search it had the best successful average (3.20 vs 4.40 AVL vs 15.80 BST) and its best-case behavior is constant time, which fits barcode-scan scenarios.
+All three containers operate on identical `Product` structs (`id`, `name`, `category`, `price`) without external third-party libraries:
 
-**But the AVL Tree is the safest all-round choice.** Its worst case is guaranteed O(log n) (5–6 comparisons here for every query, hit or miss), it gave better unsuccessful-search performance than the hash table in this dataset (5.40 vs 6.00), and it keeps data sorted.
-
-| Situation | Best choice |
-|---|---|
-| Instant exact-ID barcode scans, no ordering needed, keys well spread | **Hash Table** (use a lower load factor or better hash/probing for sequential IDs) |
-| Need sorted reports, range queries (e.g., IDs 1005–1015, price bands), predictable worst case | **AVL Tree** |
-| Tiny dataset, random insertion order, simplest code | BST (never for sorted/bulk inserts) |
-
-**Recommendation:** Use a hash table for the live scanning path and an AVL tree for reporting/range queries. Never use a plain BST when IDs arrive in sequential batches.
+- **Binary Search Tree (`BST`):** Standard pointer-based nodes ordered by `id`. `insert()` and `search()` increment a counter on every visited node until reaching a match or a null child.
+- **AVL Tree (`AVLTree`):** Extends each node with a cached `height` integer. After recursive insertion, balance factors outside `[-1, 1]` trigger single rotations (`rotateRight` for LL, `rotateLeft` for RR) or double rotations (`LR` and `RL`). Both trees support sorted catalog printing via in-order traversal.
+- **Hash Table (`HashTable`):** Uses a fixed prime capacity of `53` slots (`load factor = 40 / 53 ≈ 0.75`) and hashes keys via `productID % 53`. Occupied slots advance linearly by `(index + step) % 53`, counting every inspected bucket as a probe.
 
 ---
 
-## Viva Prep Cheat Sheet
+## Part C – Recorded Experimental Outputs
 
-**1. What is primary clustering in linear probing?**
-Colliding keys fill consecutive slots, forming a long run that grows whenever any key hashes into it. In our data, IDs 1001–1020 occupy slots 47–52 and 0–13 contiguously, so later keys such as 9921 needed 12 probes.
+### 1. Bulk Insertion Metrics (40 Unique SKUs)
+- **BST Final Height:** `26` levels (`647` total comparisons across 40 insertions)
+- **AVL Final Height:** `6` levels (`165` total comparisons; `23` rotations triggered)
+- **Hash Table Collisions:** `172` cumulative collisions at `0.75` load factor (`size = 53`)
 
-**2. Why is the table size prime (53)?**
-A prime modulus shares no common factors with typical ID patterns or strides, so keys spread more uniformly across slots. A composite size (e.g., 50 or 60) would map IDs with common multiples into the same few slots.
+### 2. Lookup Benchmark Results
 
-**3. When does an AVL tree rotate, and which rotation is used?**
-It rotates when a node's balance factor becomes +2 or −2 after an insertion. LL → right rotation, RR → left rotation, LR → left then right, RL → right then left.
+#### Existing Product IDs (Successful Queries)
+| Queried ID | Catalog Match | BST Comparisons | AVL Comparisons | Hash Probes |
+| :---: | :--- | :---: | :---: | :---: |
+| `1001` | Found | 1 | 5 | 1 |
+| `1010` | Found | 10 | 4 | 1 |
+| `1020` | Found | 20 | 4 | 1 |
+| `6391` | Found | 24 | 4 | 1 |
+| `9921` | Found | 24 | 5 | 12 |
+| **Mean** | — | **15.80** | **4.40** | **3.20** |
 
-**4. What is the worst case for a BST and why did it happen here?**
-Inserting already-sorted keys makes every node a right child, so the tree becomes a linked list with O(n) height and search. Our sequential IDs 1001–1020 pushed the BST height to 26 for 40 nodes.
+#### Missing Product IDs (Unsuccessful Queries)
+| Queried ID | Catalog Match | BST Comparisons | AVL Comparisons | Hash Probes |
+| :---: | :--- | :---: | :---: | :---: |
+| `1021` | Not Found | 24 | 6 | 13 |
+| `1500` | Not Found | 24 | 6 | 11 |
+| `3000` | Not Found | 24 | 5 | 1 |
+| `9999` | Not Found | 24 | 5 | 1 |
+| `500` | Not Found | 1 | 5 | 4 |
+| **Mean** | — | **19.40** | **5.40** | **6.00** |
 
-**5. Why does the hash table win exact search but lose for range reports?**
-Hashing scatters keys pseudo-randomly, giving O(1) average lookup but no ordering, so "all IDs between 1005 and 1015" requires scanning the whole table. An AVL tree stores keys sorted, so a range query is O(log n + k).
+### 3. Live Menu Verification Log
+- **Duplicate Guard Check (`ID 1011`):** Attempting to re-insert `1011` was blocked cleanly across all three structures (`ID 1011 already exists - duplicate rejected`).
+- **Live Query Check (`ID 1011` – `Screen Guard`, `Mobile`, `Rs.199.00`):** Required `11` comparisons in BST, `5` comparisons in AVL, and `1` direct probe in the Hash Table (bucket `4`).
+
+### Terminal Execution Screenshots
+![Benchmark Results](screenshots/benchmark_results.png)
+![Live Viva Menu Demo](screenshots/viva_demo.png)
 
 ---
 
-## Files
+## Part D – Comparative Analysis
 
-| File | Purpose |
-|---|---|
-| `main.cpp` | Complete implementation (BST, AVL, Hash, experiment, viva menu) |
-| `README.md` | This report |
+| Parameter | BST | AVL | Hashing |
+| :--- | :--- | :--- | :--- |
+| **Search comparisons** | Hit avg: `15.80` (1–24)<br>Miss avg: `19.40` (1–24) | Hit avg: `4.40` (4–5)<br>Miss avg: `5.40` (5–6) | Hit avg: `3.20` (1–12)<br>Miss avg: `6.00` (1–13) |
+| **Insertion observations** | Required `647` comparisons; consecutive SKUs `1001–1020` chained down the right spine. | Required `165` comparisons; `23` rotations held the tree at optimal depth. | Logged `172` collisions at `0.75` occupancy; sequential SKUs packed into adjacent slots. |
+| **Height** | `26` nodes | `6` nodes | – |
+| **Collisions** | – | – | `172` |
+| **Overall observation** | Unsuitable for batch-ordered SKUs due to right-branch skewing; supports sorted listing. | Tightest worst-case guarantee (`<= 6` steps for every lookup) plus native sorted traversal. | Fastest for direct SKU hits (`1` probe on 4 of 5 hits), though slot clustering penalizes misses; unordered. |
+
+### Key Patterns Observed in the Data
+1. **Right-Spine Skewing in BST:** Inserting `1001` through `1020` in ascending sequence forced each new SKU onto the right child of its predecessor, stretching height to `26` (far above the optimal `6` levels for 40 items). Consequently, deeper keys such as `6391` and `9921` each needed `24` node visits.
+2. **Rotation Payoff in AVL:** Performing `23` rotations during insertion kept every search bounded between `4` and `6` comparisons—cutting average successful lookup cost by **72%** (`4.40` vs. `15.80`) relative to the unbalanced BST.
+3. **Contiguous Slot Clustering in Linear Probing:** Because `1001 % 53 = 47` through `1020 % 53 = 13` filled buckets `47–52` and wrapped across `0–13` without gaps, later keys landing inside that occupied block suffered multi-step linear scans (`9921` required `12` probes; missing key `1021` walked `13` slots before hitting an empty bucket).
+
+---
+
+## Part E – Final Recommendation
+
+**Selected Winner for Product ID Search: Hash Table (Linear Probing)**
+
+For a barcode-driven Product ID lookup service where almost all queries check existing SKUs by exact ID, **Hashing delivers the best real-world throughput**:
+- It achieved the lowest mean comparison count on successful lookups (**`3.20`** vs. **`4.40`** for AVL and **`15.80`** for BST), resolving **80% of valid test queries (`1001`, `1010`, `1020`, `6391`) in a single probe**.
+- Reducing table occupancy below `0.55` (for instance, sizing the array to `79` or `83` slots for 40 products) or switching to double hashing would eliminate the primary clustering seen on `1021` and `1500`.
+
+**When AVL Tree Should Be Chosen Instead:**  
+If the inventory module also needs **sorted catalog exports** (such as printing items in ascending SKU order) or **range queries** (for example, listing all products priced or numbered between `1001` and `1010`), a Hash Table cannot answer without scanning and sorting the entire array. In those reporting workloads, the **AVL Tree** is the stronger engineering choice due to its guaranteed `<= 6` comparison ceiling and native in-order traversal.
+
+---
+
+## Repository Contents
+
+```text
+├── main.cpp            # C++17 source implementing BST, AVL Tree, Hash Table, benchmark, and viva menu
+├── README.md           # Experimental report and comparative analysis
+└── screenshots/        # Captured terminal outputs from local execution
+```
